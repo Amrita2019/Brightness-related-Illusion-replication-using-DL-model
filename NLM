@@ -1,0 +1,18 @@
+
+import cv2
+import numpy as np
+from skimage import io, img_as_float
+from skimage.restoration import denoise_nl_means, estimate_sigma
+
+file_name = "sample_data/image/795.png"
+save_name = "sample_data/test/795.png"
+
+img_noise = img_as_float(io.imread(file_name, as_gray=True))
+
+sigma_est = np.mean(estimate_sigma(img_noise, multichannel=True))
+
+NLM_denoise_img = denoise_nl_means(img_noise, h=3 * sigma_est, fast_mode=True,
+                               patch_size=5, patch_distance=3, multichannel=False)
+
+
+io.imsave(save_name,NLM_denoise_img)
