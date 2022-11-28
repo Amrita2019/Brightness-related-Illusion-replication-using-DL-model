@@ -1,0 +1,23 @@
+!pip install bm3d # Run just once
+import matplotlib.pyplot as plt
+from skimage import io, img_as_float
+from skimage import img_as_ubyte
+from skimage.metrics import peak_signal_noise_ratio
+import bm3d
+import cv2
+
+file_name = "sample_data/image/795.png"
+save_name = "sample_data/test/795.png"
+noisy_img = img_as_float(io.imread(file_name, as_gray=True))
+
+sigma_est = np.mean(estimate_sigma(noisy_img, multichannel=True))
+
+BM3D_denoised_image = bm3d.bm3d(noisy_img, sigma_psd=5*sigma_est, stage_arg=bm3d.BM3DStages.HARD_THRESHOLDING)
+
+"""
+sigma_psd - noise standard deviation
+stage_arg: Determines whether to perform hard-thresholding or Wiener filtering.
+stage_arg = BM3DStages.HARD_THRESHOLDING or BM3DStages.ALL_STAGES (slow but powerful)
+All stages performs both hard thresholding and Wiener filtering. 
+"""
+io.imsave(save_name,BM3D_denoised_image)
