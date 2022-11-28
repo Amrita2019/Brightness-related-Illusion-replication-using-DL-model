@@ -1,0 +1,97 @@
+import numpy as np 
+import os
+import skimage.io as io
+import skimage.transform as trans
+import numpy as np
+from keras.models import *
+from keras.layers import *
+from keras.optimizers import *
+from keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from keras import backend as keras
+
+
+def unet(skip_wt, pretrained_weights = None,input_size = (256,256,1)):
+  flt_sz=3;
+  # Deblur pathway
+  inputs = Input(input_size)
+  conv1 = Conv2D(64, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(inputs)
+  conv1 = Conv2D(64, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv1)
+  #drop1 = Dropout(0.5)(conv1) #For De-GN-bce Unet
+  
+  pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
+  conv2 = Conv2D(128, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool1)
+  conv2 = Conv2D(128, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv2)
+  #drop2 = Dropout(0.5)(conv2) #For De-GN-bce Unet
+  
+  pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
+  conv3 = Conv2D(256, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool2)
+  conv3 = Conv2D(256, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv3)
+  #drop3 = Dropout(0.5)(conv3) #For De-GN-bce Unet
+
+  pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
+  conv4 = Conv2D(512, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool3)
+  conv4 = Conv2D(512, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv4)
+  
+  drop4 = Dropout(0.5)(conv4)#For De-GN, De-GB, De-4N, De-4NGB, De-4NMB U-net 
+                             #For De-GN-bce Unet
+  pool4 = MaxPooling2D(pool_size=(2, 2))(drop4)
+                                               
+
+  # Bottleneck
+  conv5 = Conv2D(1024, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool4)
+  conv5 = Conv2D(1024, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv5)
+  
+  drop5 = Dropout(0.5)(conv5)#For De-GN, De-GB, De-4N, De-4NGB, De-4NMB U-net 
+                             #For De-GN-bce Unet
+  
+  up6 = Conv2D(512, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
+  merge6 = skip_wt*concatenate([drop4,up6], axis = 3)
+  conv6 = Conv2D(512, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge6)
+  conv6 = Conv2D(512, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv6)
+  #drop6 = Dropout(0.5)(conv6)#For De-GN-bce Unet
+  
+  up7 = Conv2D(256, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv6))
+  merge7 = skip_wt*concatenate([conv3,up7], axis = 3)
+  conv7 = Conv2D(256, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge7)
+  conv7 = Conv2D(256, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv7)
+  #drop7 = Dropout(0.5)(conv7)#For De-GN-bce Unet
+  
+  up8 = Conv2D(128, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv7))
+  merge8 = skip_wt*concatenate([conv2,up8], axis = 3)
+  conv8 = Conv2D(128, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge8)
+  conv8 = Conv2D(128, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv8)
+  #drop8 = Dropout(0.5)(conv8) #For De-GN-bce Unet
+  
+  up9 = Conv2D(64, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv8))
+  merge9 = skip_wt*concatenate([conv1,up9], axis = 3)
+  conv9 = Conv2D(64, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge9)
+  conv9 = Conv2D(64, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
+  conv9 = Conv2D(2, flt_sz, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
+  conv10 = Conv2D(1, 1, activation = 'sigmoid')(conv9)
+  
+  model = Model(inputs, conv10)
+  
+  model.compile(optimizer = tf.keras.optimizers.Adam(learning_rate = 1e-4), loss = 'mse', metrics = ['accuracy'])  #For De-GN, De-GB, De-4N, De-4NGB, De-4NMB U-net 
+  #model.compile(optimizer = tf.keras.optimizers.Adam(learning_rate = 1e-4), loss = 'bce', metrics = ['accuracy']) #For De-GN-bce Unet
+  
+  if(pretrained_weights):
+    model.load_weights(pretrained_weights)
+    
+  return model
+  
+  for sk in range(2,3):
+  data_gen_args = dict(rotation_range=0.2,
+                    width_shift_range=0.05,
+                  height_shift_range=0.05,
+                    shear_range=0.05,
+                    zoom_range=0.05,
+                    horizontal_flip=True,
+                   fill_mode='nearest')
+  myGene = trainGenerator(2,'sample_data','image','label',data_gen_args,save_to_dir = None)
+  model = unet(1)
+  model_checkpoint = ModelCheckpoint('allnoise_gausblur.hdf5', monitor='loss',verbose=1, save_best_only=True)
+  model.fit(myGene,steps_per_epoch=300,epochs=10,callbacks=[model_checkpoint])
+  test_path = "sample_data/test"
+  testGene = testGenerator(test_path)
+  results = model.predict_generator(testGene,21,verbose=1)
+  saveResult(test_path,results)
