@@ -14,10 +14,4 @@ sigma_est = np.mean(estimate_sigma(noisy_img, multichannel=True))
 
 BM3D_denoised_image = bm3d.bm3d(noisy_img, sigma_psd=5*sigma_est, stage_arg=bm3d.BM3DStages.HARD_THRESHOLDING)
 
-"""
-sigma_psd - noise standard deviation
-stage_arg: Determines whether to perform hard-thresholding or Wiener filtering.
-stage_arg = BM3DStages.HARD_THRESHOLDING or BM3DStages.ALL_STAGES (slow but powerful)
-All stages performs both hard thresholding and Wiener filtering. 
-"""
 io.imsave(save_name,BM3D_denoised_image)
