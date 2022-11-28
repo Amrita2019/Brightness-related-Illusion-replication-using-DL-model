@@ -1,0 +1,17 @@
+% ii=imread('image name');
+% 
+% ii=rgb2gray(ii);
+% figure(1)
+% imshow(ii)
+
+%%%%% Wiener %%%%%
+K = wiener2(ii,[5 5]);
+figure(3)
+%imshow(ii)
+imshow(K)
+
+
+%%%%% sgolayfilt %%%%%
+%  K = sgolayfilt(im2double(ii),3,9);
+%  figure(3)
+%  imshow(K)
