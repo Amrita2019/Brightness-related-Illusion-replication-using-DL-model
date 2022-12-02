@@ -188,7 +188,7 @@ def unet(skip_wt, pretrained_weights = None,input_size = (256,256,1)):
                    fill_mode='nearest')
   myGene = trainGenerator(2,'sample_data','image','label',data_gen_args,save_to_dir = None)
   model = unet(1)
-  model_checkpoint = ModelCheckpoint('allnoise_gausblur.hdf5', monitor='loss',verbose=1, save_best_only=True)
+  model_checkpoint = ModelCheckpoint('filename.hdf5', monitor='loss',verbose=1, save_best_only=True)
   model.fit(myGene,steps_per_epoch=300,epochs=10,callbacks=[model_checkpoint])
   test_path = "sample_data/test"
   testGene = testGenerator(test_path)
